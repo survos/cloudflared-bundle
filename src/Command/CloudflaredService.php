@@ -160,7 +160,11 @@ final class CloudflaredService
             if (\in_array($hostname, $existingHosts, true)) {
                 continue;
             }
-            $added[] = new IngressRule($hostname, (string) $project->origin, $project->scheme === 'https');
+            // A rule already serving this port knows its origin better than the defaults do
+            // (depot's 90s timeouts), so a new hostname for the same port copies it.
+            $twin = array_find($rules, static fn(IngressRule $r): bool => !$r->isCatchAll && $r->port === $project->port);
+            $added[] = $twin?->withHostname($hostname)
+                ?? new IngressRule($hostname, (string) $project->origin, $project->scheme === 'https' ? ['noTLSVerify' => true] : []);
         }
 
         // New rules go after the existing named ones and before the catch-all, which must stay last.

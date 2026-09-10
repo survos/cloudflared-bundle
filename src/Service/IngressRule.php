@@ -10,10 +10,15 @@ namespace Survos\CloudflaredBundle\Service;
  */
 final class IngressRule
 {
+    /**
+     * @param array<string, mixed> $originRequest carried verbatim: settings like connectTimeout
+     *                                            exist for hard-won reasons (truncated 17MB scan
+     *                                            transfers), so nothing here may drop them
+     */
     public function __construct(
         public readonly ?string $hostname,
         public readonly string $service,
-        public readonly bool $noTlsVerify = false,
+        public readonly array $originRequest = [],
     ) {
     }
 
@@ -23,8 +28,18 @@ final class IngressRule
         return new self(
             hostname: isset($rule['hostname']) && $rule['hostname'] !== '' ? (string) $rule['hostname'] : null,
             service: (string) ($rule['service'] ?? ''),
-            noTlsVerify: (bool) ($rule['originRequest']['noTLSVerify'] ?? false),
+            originRequest: \is_array($rule['originRequest'] ?? null) ? $rule['originRequest'] : [],
         );
+    }
+
+    /** The same origin settings under another hostname -- how an m4-* twin inherits a mac-* rule's. */
+    public function withHostname(string $hostname): self
+    {
+        return new self($hostname, $this->service, $this->originRequest);
+    }
+
+    public bool $noTlsVerify {
+        get => (bool) ($this->originRequest['noTLSVerify'] ?? false);
     }
 
     /** Local port this rule forwards to, or null for http_status:404 and non-loopback services. */
@@ -52,8 +67,8 @@ final class IngressRule
     {
         $rule = $this->hostname === null ? [] : ['hostname' => $this->hostname];
         $rule['service'] = $this->service;
-        if ($this->noTlsVerify) {
-            $rule['originRequest'] = ['noTLSVerify' => true];
+        if ($this->originRequest !== []) {
+            $rule['originRequest'] = $this->originRequest;
         }
 
         return $rule;
