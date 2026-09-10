@@ -1,0 +1,26 @@
+{
+    "name": "survos/cloudflared-bundle",
+    "description": "Expose a local Symfony dev app through a named cloudflared tunnel: derive its public URL from the running tunnel, probe that the tunnel really answers from this machine, and generate ingress from the Symfony CLI proxy index.",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": ["symfony", "cloudflare", "cloudflared", "tunnel", "dev"],
+    "autoload": {
+        "psr-4": {
+            "Survos\\CloudflaredBundle\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.5",
+        "survos/kit-bundle": "^2.5",
+        "symfony/console": "^8.1",
+        "symfony/framework-bundle": "^8.1",
+        "symfony/http-client": "^8.1",
+        "symfony/process": "^8.1",
+        "symfony/yaml": "^8.1"
+    },
+    "extra": {
+        "symfony": {
+            "require": "^8.1"
+        }
+    }
+}
