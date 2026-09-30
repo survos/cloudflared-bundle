@@ -31,7 +31,7 @@ Add `config/packages/survos_cloudflared.yaml` (its presence also opts the app in
 survos_cloudflared:
     # port: 8021              # default: from the proxy index
     # machine: m4             # default: CLOUDFLARED_MACHINE
-    # zone: scanstationai.work
+    # zone: survos.org        # the default; see Hostnames below
     # enabled: ~              # default: dev environment only
     # guard_debug_routes: true
 ```
@@ -47,6 +47,29 @@ variable's own value otherwise — so production (bundle disabled, no tunnel) is
 
 Or inject `Survos\CloudflaredBundle\Service\Tunnel` and call `url()` / `host()` (null when no
 tunnel serves the app).
+
+## Hostnames: `<machine>-<app>.survos.org`
+
+Every dev app reachable through a tunnel is `<machine>-<app>.survos.org`: `m4-news`, `m4-ink`,
+`m4-depot`, `praveen-ssai`. One zone, one pattern, on every machine.
+
+- **survos.org is dev-only.** No production app ever lives on it. Dev tunnels publish dev-mode apps,
+  and a shared parent domain with production lets cookies and credentials cross between them.
+- **Hyphen, not dot.** `m4-depot.survos.org`, never `depot.m4.survos.org`: Cloudflare's free Universal
+  SSL certificate covers one level (`*.survos.org`); a second level needs a paid Advanced Certificate.
+- **No shared cookies between dev apps.** They all sit under one parent domain, so each app keeps
+  its cookies host-only (never `domain: .survos.org`) with its own session name. Otherwise one app's
+  session is sent to another; the symptom is an app that misbehaves in a normal window and works
+  in an incognito one.
+- **DNS lives in the survos.org zone.** `cloudflared tunnel route dns` creates records in the zone of
+  the certificate from `cloudflared tunnel login`. With a certificate for another zone it appends
+  that zone: `m4-news.survos.org` became `m4-news.survos.org.scanstationai.work`. Log in to
+  survos.org, or create the proxied CNAME (`<tunnel-id>.cfargotunnel.com`) through the Cloudflare API.
+- **Production traffic doesn't share a tunnel with dev apps.** Adding a dev app means restarting its
+  tunnel; anything production depends on (the scanstation depot) goes on its own tunnel so that
+  restart can't interrupt it.
+
+`scanstationai.work` is the older zone; its hostnames stay as aliases until nothing uses them.
 
 ## Commands
 
