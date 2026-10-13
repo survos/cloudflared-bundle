@@ -57,7 +57,7 @@ final class SurvosCloudflaredBundle extends AbstractSurvosBundle
                 ->arrayNode('metrics')
                     ->info('cloudflared metrics servers to look for running tunnels on. cloudflared takes the first free port of 20241-20245.')
                     ->scalarPrototype()->end()
-                    ->defaultValue(array_map(static fn(int $p): string => 'http://127.0.0.1:' . $p, range(20241, 20245)))
+                    ->defaultValue(array_map(static fn (int $p): string => 'http://127.0.0.1:'.$p, range(20241, 20245)))
                 ->end()
                 ->booleanNode('guard_debug_routes')
                     ->info('404 /_profiler and /_wdt, and drop X-Debug-Token, for requests that came through Cloudflare.')
@@ -73,7 +73,7 @@ final class SurvosCloudflaredBundle extends AbstractSurvosBundle
     {
         parent::loadExtension($config, $container, $builder);
 
-        $enabled = $config['enabled'] ?? ($builder->getParameter('kernel.environment') === 'dev');
+        $enabled = $config['enabled'] ?? ('dev' === $builder->getParameter('kernel.environment'));
 
         $services = $container->services()
             ->defaults()

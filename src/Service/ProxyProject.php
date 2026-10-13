@@ -28,6 +28,6 @@ final class ProxyProject
 
     /** Where cloudflared should send traffic for this project, e.g. https://127.0.0.1:8021. */
     public ?string $origin {
-        get => $this->port === null ? null : sprintf('%s://127.0.0.1:%d', $this->scheme, $this->port);
+        get => null === $this->port ? null : sprintf('%s://127.0.0.1:%d', $this->scheme, $this->port);
     }
 }

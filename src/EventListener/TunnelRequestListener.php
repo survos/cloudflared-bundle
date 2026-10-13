@@ -56,7 +56,7 @@ final class TunnelRequestListener
         $request = $event->getRequest();
         $path = $request->getPathInfo();
 
-        if ($this->enabled && $path === self::WHOAMI_PATH) {
+        if ($this->enabled && self::WHOAMI_PATH === $path) {
             $response = new JsonResponse([
                 'app' => $this->app,
                 'instance' => $this->instanceId->get(),

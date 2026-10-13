@@ -23,6 +23,6 @@ final readonly class Connector
     /** @return list<IngressRule> */
     public function rulesForPort(int $port): array
     {
-        return array_values(array_filter($this->ingress, static fn(IngressRule $r): bool => $r->port === $port));
+        return array_values(array_filter($this->ingress, static fn (IngressRule $r): bool => $r->port === $port));
     }
 }

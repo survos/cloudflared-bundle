@@ -29,7 +29,7 @@ final class InstanceId
         if (!is_dir(\dirname($this->file))) {
             @mkdir(\dirname($this->file), 0o775, true);
         }
-        @file_put_contents($this->file, $id . "\n", LOCK_EX);
+        @file_put_contents($this->file, $id."\n", LOCK_EX);
 
         return $id;
     }

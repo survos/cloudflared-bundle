@@ -39,7 +39,7 @@ final class CloudflaredAgent
     /** @return list<Connector> */
     public function connectors(): array
     {
-        if ($this->connectors !== null) {
+        if (null !== $this->connectors) {
             return $this->connectors;
         }
 
@@ -47,7 +47,7 @@ final class CloudflaredAgent
         // round trip, not five.
         $ready = [];
         foreach ($this->metricsUrls as $url) {
-            $ready[$url] = $this->httpClient->request('GET', rtrim($url, '/') . '/ready', ['timeout' => 1, 'max_duration' => 2]);
+            $ready[$url] = $this->httpClient->request('GET', rtrim($url, '/').'/ready', ['timeout' => 1, 'max_duration' => 2]);
         }
 
         $connectors = [];
@@ -55,7 +55,7 @@ final class CloudflaredAgent
             try {
                 // /ready answers 503 while the tunnel is still connecting; that is still a connector.
                 $status = $response->toArray(false);
-                $config = $this->httpClient->request('GET', rtrim($url, '/') . '/config', ['timeout' => 1, 'max_duration' => 2])->toArray(false);
+                $config = $this->httpClient->request('GET', rtrim($url, '/').'/config', ['timeout' => 1, 'max_duration' => 2])->toArray(false);
             } catch (ExceptionInterface) {
                 continue;
             }
@@ -97,11 +97,11 @@ final class CloudflaredAgent
             if (!str_contains($line, 'cloudflared') || !str_contains($line, ' tunnel')) {
                 continue;
             }
-            if (preg_match('/--config[= ](\S+)/', $line, $m) === 1) {
+            if (1 === preg_match('/--config[= ](\S+)/', $line, $m)) {
                 $files[] = $m[1];
             } else {
                 // No --config: cloudflared falls back to ~/.cloudflared/config.yml.
-                $files[] = ($_SERVER['HOME'] ?? getenv('HOME')) . '/.cloudflared/config.yml';
+                $files[] = ($_SERVER['HOME'] ?? getenv('HOME')).'/.cloudflared/config.yml';
             }
         }
 
@@ -136,7 +136,7 @@ final class CloudflaredAgent
     public function remoteConnectors(string $tunnel): ?array
     {
         $binary = $this->binary ?? (new ExecutableFinder())->find('cloudflared', null, ['/opt/homebrew/bin', '/usr/local/bin']);
-        if ($binary === null) {
+        if (null === $binary) {
             return null;
         }
 
@@ -159,7 +159,7 @@ final class CloudflaredAgent
                 'arch' => (string) ($conn['arch'] ?? ''),
                 'version' => (string) ($conn['version'] ?? ''),
                 'originIps' => array_values(array_unique(array_map(
-                    static fn(array $edge): string => (string) ($edge['origin_ip'] ?? ''),
+                    static fn (array $edge): string => (string) ($edge['origin_ip'] ?? ''),
                     (array) ($conn['conns'] ?? []),
                 ))),
                 'runAt' => (string) ($conn['run_at'] ?? ''),

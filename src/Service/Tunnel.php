@@ -57,14 +57,14 @@ final class Tunnel
     {
         $machine = trim((string) $this->machine);
 
-        return $machine === '' ? null : strtolower($machine);
+        return '' === $machine ? null : strtolower($machine);
     }
 
     public function configuredHostname(): ?string
     {
         $host = trim((string) $this->hostname);
 
-        return $host === '' ? null : (parse_url($host, PHP_URL_HOST) ?: $host);
+        return '' === $host ? null : (parse_url($host, PHP_URL_HOST) ?: $host);
     }
 
     public function project(): ?ProxyProject
@@ -81,8 +81,8 @@ final class Tunnel
     public function portSource(): string
     {
         return match (true) {
-            $this->port !== null => 'survos_cloudflared.port',
-            $this->project()?->port !== null => 'symfony proxy index',
+            null !== $this->port => 'survos_cloudflared.port',
+            null !== $this->project()?->port => 'symfony proxy index',
             default => 'unknown',
         };
     }
@@ -92,7 +92,7 @@ final class Tunnel
     {
         $machine ??= $this->machine();
 
-        return $machine === null ? null : sprintf('%s-%s.%s', $machine, $this->app(), $this->zone);
+        return null === $machine ? null : sprintf('%s-%s.%s', $machine, $this->app(), $this->zone);
     }
 
     /** @return list<IngressRule> live rules on this machine that forward to this app's port */
@@ -100,7 +100,7 @@ final class Tunnel
     {
         $port = $this->port();
 
-        return $port === null ? [] : $this->agent->rulesForPort($port);
+        return null === $port ? [] : $this->agent->rulesForPort($port);
     }
 
     /** Uncached resolution; see the class docblock for the order. */
@@ -113,8 +113,8 @@ final class Tunnel
             return $configured;
         }
 
-        $hosts = array_values(array_filter(array_map(static fn(IngressRule $r): ?string => $r->hostname, $this->routes())));
-        if ($hosts === []) {
+        $hosts = array_values(array_filter(array_map(static fn (IngressRule $r): ?string => $r->hostname, $this->routes())));
+        if ([] === $hosts) {
             return null;
         }
         $conventional = $this->conventionalHost();
@@ -132,14 +132,14 @@ final class Tunnel
             return null;
         }
 
-        $url = $this->cache->get('survos_cloudflared.url.' . md5($this->projectDir), function (ItemInterface $item): string {
+        $url = $this->cache->get('survos_cloudflared.url.'.md5($this->projectDir), function (ItemInterface $item): string {
             $item->expiresAfter(self::CACHE_TTL);
             $host = $this->host();
 
             // Cache the miss too, as '', so a machine with no tunnel does not re-scan per request.
-            return $host === null ? '' : 'https://' . $host;
+            return null === $host ? '' : 'https://'.$host;
         });
 
-        return $url === '' ? null : $url;
+        return '' === $url ? null : $url;
     }
 }

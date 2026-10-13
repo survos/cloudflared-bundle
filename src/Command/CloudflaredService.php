@@ -48,37 +48,37 @@ final class CloudflaredService
         $rows = [
             ['App', sprintf('%s  (%s)', $this->tunnel->app(), $this->tunnel->projectDir())],
             ['Enabled', $this->tunnel->isEnabled() ? 'yes' : 'no -- survos_cloudflared.enabled is off in this environment'],
-            ['Port', $port === null ? '<error>unknown</error> -- not in the proxy index; set survos_cloudflared.port' : sprintf('%d  (%s)', $port, $this->tunnel->portSource())],
+            ['Port', null === $port ? '<error>unknown</error> -- not in the proxy index; set survos_cloudflared.port' : sprintf('%d  (%s)', $port, $this->tunnel->portSource())],
         ];
-        if ($project !== null) {
+        if (null !== $project) {
             $rows[] = ['Proxy', sprintf('%s, %s', $project->scheme, implode(', ', $project->domains) ?: 'no domains')];
         }
-        $rows[] = ['Connectors', $connectors === []
+        $rows[] = ['Connectors', [] === $connectors
             ? '<error>none</error> -- no cloudflared metrics server answers on 127.0.0.1:20241-20245'
-            : implode("\n", array_map(static fn($c): string => sprintf('%s on %s (%d edge connections)', $c->connectorId ?? '?', $c->metricsUrl, $c->readyConnections), $connectors))];
+            : implode("\n", array_map(static fn ($c): string => sprintf('%s on %s (%d edge connections)', $c->connectorId ?? '?', $c->metricsUrl, $c->readyConnections), $connectors))];
 
         $routes = $this->tunnel->routes();
-        $rows[] = ['Routes', $routes === []
+        $rows[] = ['Routes', [] === $routes
             ? sprintf('<comment>none</comment> -- no live ingress rule forwards to port %s', $port ?? '?')
-            : implode("\n", array_map(static fn(IngressRule $r): string => sprintf('%s → %s', $r->hostname, $r->service), $routes))];
+            : implode("\n", array_map(static fn (IngressRule $r): string => sprintf('%s → %s', $r->hostname, $r->service), $routes))];
 
         $conventional = $this->tunnel->conventionalHost();
-        if ($conventional === null) {
+        if (null === $conventional) {
             $rows[] = ['Convention', '<comment>machine unknown</comment> -- set CLOUDFLARED_MACHINE (e.g. m4) or survos_cloudflared.machine'];
         } else {
-            $live = \in_array($conventional, array_map(static fn(IngressRule $r): ?string => $r->hostname, $routes), true);
-            $rows[] = ['Convention', $conventional . ($live ? '' : '  <comment>(not in the live ingress -- see cloudflared:ingress)</comment>')];
+            $live = \in_array($conventional, array_map(static fn (IngressRule $r): ?string => $r->hostname, $routes), true);
+            $rows[] = ['Convention', $conventional.($live ? '' : '  <comment>(not in the live ingress -- see cloudflared:ingress)</comment>')];
         }
         if (null !== $configured = $this->tunnel->configuredHostname()) {
-            $rows[] = ['Pinned host', $configured . '  (survos_cloudflared.hostname)'];
+            $rows[] = ['Pinned host', $configured.'  (survos_cloudflared.hostname)'];
         }
 
         $url = $this->tunnel->host();
-        $rows[] = ['Public URL', $url === null ? '<error>none</error>' : '<info>https://' . $url . '</info>'];
+        $rows[] = ['Public URL', null === $url ? '<error>none</error>' : '<info>https://'.$url.'</info>'];
 
-        $io->definitionList(...array_map(static fn(array $row): array => [$row[0] => $row[1]], $rows));
+        $io->definitionList(...array_map(static fn (array $row): array => [$row[0] => $row[1]], $rows));
 
-        if ($url === null) {
+        if (null === $url) {
             return Command::FAILURE;
         }
         $io->text('Run <info>cloudflared:probe</info> to check that the hostname actually comes back to this machine.');
@@ -93,7 +93,7 @@ final class CloudflaredService
         #[Option('Probe this hostname instead of the resolved one')] ?string $host = null,
     ): int {
         $host ??= $this->tunnel->host();
-        if ($host === null) {
+        if (null === $host) {
             $io->error('No public hostname for this app -- run cloudflared:status to see why.');
 
             return Command::FAILURE;
@@ -115,7 +115,7 @@ final class CloudflaredService
 
         $foreign = $this->reportConnectors($io);
 
-        if ($allHere && $foreign === 0) {
+        if ($allHere && 0 === $foreign) {
             $io->success(sprintf('https://%s answers from this checkout on every request.', $host));
 
             return Command::SUCCESS;
@@ -131,15 +131,15 @@ final class CloudflaredService
     #[AsCommand('cloudflared:ingress', 'Generate this machine\'s cloudflared ingress from the Symfony proxy index, keeping every existing rule')]
     public function ingress(SymfonyStyle $io, #[MapInput] IngressInput $input): int
     {
-        $machine = $input->machine !== null ? strtolower(trim($input->machine)) : $this->tunnel->machine();
-        if ($machine === null || $machine === '') {
+        $machine = null !== $input->machine ? strtolower(trim($input->machine)) : $this->tunnel->machine();
+        if (null === $machine || '' === $machine) {
             $io->error('No machine prefix. Pass --machine=m4, or export CLOUDFLARED_MACHINE=m4 once in your shell profile.');
 
             return Command::INVALID;
         }
 
         $from = $input->from ?? ($this->agent->runningConfigFiles()[0] ?? null);
-        if ($from === null || !is_readable($from)) {
+        if (null === $from || !is_readable($from)) {
             $io->error('No cloudflared config to start from: no tunnel is running and --from was not given.');
 
             return Command::FAILURE;
@@ -149,11 +149,11 @@ final class CloudflaredService
         $zone = $this->tunnel->zone();
 
         $projects = $this->selectProjects($io, $input);
-        if ($projects === null) {
+        if (null === $projects) {
             return Command::INVALID;
         }
 
-        $existingHosts = array_filter(array_map(static fn(IngressRule $r): ?string => $r->hostname, $rules));
+        $existingHosts = array_filter(array_map(static fn (IngressRule $r): ?string => $r->hostname, $rules));
         $added = [];
         foreach ($projects as $project) {
             $hostname = sprintf('%s-%s.%s', $machine, $project->app, $zone);
@@ -162,14 +162,14 @@ final class CloudflaredService
             }
             // A rule already serving this port knows its origin better than the defaults do
             // (depot's 90s timeouts), so a new hostname for the same port copies it.
-            $twin = array_find($rules, static fn(IngressRule $r): bool => !$r->isCatchAll && $r->port === $project->port);
+            $twin = array_find($rules, static fn (IngressRule $r): bool => !$r->isCatchAll && $r->port === $project->port);
             $added[] = $twin?->withHostname($hostname)
-                ?? new IngressRule($hostname, (string) $project->origin, $project->scheme === 'https' ? ['noTLSVerify' => true] : []);
+                ?? new IngressRule($hostname, (string) $project->origin, 'https' === $project->scheme ? ['noTLSVerify' => true] : []);
         }
 
         // New rules go after the existing named ones and before the catch-all, which must stay last.
-        $named = array_values(array_filter($rules, static fn(IngressRule $r): bool => !$r->isCatchAll));
-        $catchAll = array_values(array_filter($rules, static fn(IngressRule $r): bool => $r->isCatchAll)) ?: [new IngressRule(null, 'http_status:404')];
+        $named = array_values(array_filter($rules, static fn (IngressRule $r): bool => !$r->isCatchAll));
+        $catchAll = array_values(array_filter($rules, static fn (IngressRule $r): bool => $r->isCatchAll)) ?: [new IngressRule(null, 'http_status:404')];
         $ingress = [...$named, ...$added, $catchAll[0]];
 
         $this->warnAboutDrift($io, $named, $zone);
@@ -177,7 +177,7 @@ final class CloudflaredService
         $config = array_filter([
             'tunnel' => $base['tunnel'] ?? null,
             'credentials-file' => $base['credentials-file'] ?? null,
-        ]) + ['ingress' => array_map(static fn(IngressRule $r): array => $r->toArray(), $ingress)];
+        ]) + ['ingress' => array_map(static fn (IngressRule $r): array => $r->toArray(), $ingress)];
 
         $yaml = sprintf(
             "# Generated by cloudflared:ingress from %s and the Symfony proxy index.\n# Existing rules are carried over unchanged; comments are not -- keep the original for those.\n%s",
@@ -185,10 +185,10 @@ final class CloudflaredService
             Yaml::dump($config, 4, 2, Yaml::DUMP_COMPACT_NESTED_MAPPING),
         );
 
-        if ($input->write === null) {
+        if (null === $input->write) {
             $io->writeln($yaml);
         } else {
-            if (realpath($input->write) !== false && realpath($input->write) === realpath($from)) {
+            if (false !== realpath($input->write) && realpath($input->write) === realpath($from)) {
                 $io->error('Refusing to overwrite the config the tunnel is running from (its comments would be lost). Write elsewhere, diff, then move it into place.');
 
                 return Command::FAILURE;
@@ -198,7 +198,7 @@ final class CloudflaredService
             $this->validate($io, $input->write);
         }
 
-        if ($added === []) {
+        if ([] === $added) {
             $io->note('Nothing to add: every selected app already has its hostname.');
 
             return Command::SUCCESS;
@@ -216,11 +216,11 @@ final class CloudflaredService
     /** @return list<ProxyProject>|null null when an explicitly named app cannot be routed */
     private function selectProjects(SymfonyStyle $io, IngressInput $input): ?array
     {
-        if ($input->apps !== []) {
+        if ([] !== $input->apps) {
             $projects = [];
             foreach ($input->apps as $app) {
                 $project = $this->proxyIndex->forApp($app);
-                if ($project?->port === null) {
+                if (null === $project?->port) {
                     $io->error(sprintf('"%s" has no port in the proxy index. Pin one in its .symfony.local.yaml (http.port) and start it once.', $app));
 
                     return null;
@@ -231,14 +231,14 @@ final class CloudflaredService
             return $projects;
         }
 
-        $withPort = array_filter($this->proxyIndex->projects(), static fn(ProxyProject $p): bool => $p->port !== null);
+        $withPort = array_filter($this->proxyIndex->projects(), static fn (ProxyProject $p): bool => null !== $p->port);
         if ($input->all) {
             return array_values($withPort);
         }
 
         // Opting in = having this bundle installed. A tunnel publishes a dev app to the whole
         // internet, so "every project on the machine" is not a safe default.
-        return array_values(array_filter($withPort, static fn(ProxyProject $p): bool => is_file($p->dir . '/config/packages/survos_cloudflared.yaml')));
+        return array_values(array_filter($withPort, static fn (ProxyProject $p): bool => is_file($p->dir.'/config/packages/survos_cloudflared.yaml')));
     }
 
     /**
@@ -250,17 +250,17 @@ final class CloudflaredService
     private function warnAboutDrift(SymfonyStyle $io, array $rules, string $zone): void
     {
         foreach ($rules as $rule) {
-            if ($rule->port === null || $rule->hostname === null || !str_ends_with($rule->hostname, '.' . $zone)) {
+            if (null === $rule->port || null === $rule->hostname || !str_ends_with($rule->hostname, '.'.$zone)) {
                 continue;
             }
             $owner = $this->proxyIndex->forPort($rule->port);
-            if ($owner === null) {
+            if (null === $owner) {
                 continue;
             }
             // <machine>-<app>[-suffix].<zone>: drop the zone, then the machine prefix.
-            $label = substr($rule->hostname, 0, -\strlen('.' . $zone));
+            $label = substr($rule->hostname, 0, -\strlen('.'.$zone));
             $app = str_contains($label, '-') ? substr($label, strpos($label, '-') + 1) : $label;
-            if ($app !== $owner->app && !str_starts_with($app, $owner->app . '-')) {
+            if ($app !== $owner->app && !str_starts_with($app, $owner->app.'-')) {
                 $io->warning(sprintf('%s forwards to port %d, which the proxy index gives to %s.', $rule->hostname, $rule->port, $owner->app));
             }
         }
@@ -269,14 +269,14 @@ final class CloudflaredService
     private function validate(SymfonyStyle $io, string $file): void
     {
         $binary = (new ExecutableFinder())->find('cloudflared', null, ['/opt/homebrew/bin', '/usr/local/bin']);
-        if ($binary === null) {
+        if (null === $binary) {
             return;
         }
         $process = new Process([$binary, 'tunnel', '--config', $file, 'ingress', 'validate']);
         $process->run();
         $io->writeln($process->isSuccessful()
             ? '<info>cloudflared ingress validate: OK</info>'
-            : '<error>cloudflared ingress validate failed:</error> ' . trim($process->getErrorOutput() . $process->getOutput()));
+            : '<error>cloudflared ingress validate failed:</error> '.trim($process->getErrorOutput().$process->getOutput()));
     }
 
     private function whoami(string $url, string $expected): string
@@ -289,7 +289,7 @@ final class CloudflaredService
                 'query' => ['n' => bin2hex(random_bytes(4))],
             ]);
             $status = $response->getStatusCode();
-            if ($status !== 200) {
+            if (200 !== $status) {
                 return match ($status) {
                     530 => '530: no connector serves this hostname (Cloudflare 1033)',
                     502 => '502: a connector answered but its local origin is down',
@@ -299,7 +299,7 @@ final class CloudflaredService
             }
             $body = $response->toArray(false);
         } catch (ExceptionInterface $e) {
-            return 'error: ' . $e->getMessage();
+            return 'error: '.$e->getMessage();
         }
 
         $instance = (string) ($body['instance'] ?? '');
@@ -312,16 +312,16 @@ final class CloudflaredService
     /** @return int connectors on the running tunnels that are not on this machine */
     private function reportConnectors(SymfonyStyle $io): int
     {
-        $localIds = array_filter(array_map(static fn($c): ?string => $c->connectorId, $this->agent->connectors()));
+        $localIds = array_filter(array_map(static fn ($c): ?string => $c->connectorId, $this->agent->connectors()));
         $foreign = 0;
 
         foreach ($this->agent->runningConfigFiles() as $file) {
             $tunnelId = $this->agent->tunnelOf($file)['tunnel'];
-            if ($tunnelId === null) {
+            if (null === $tunnelId) {
                 continue;
             }
             $remote = $this->agent->remoteConnectors($tunnelId);
-            if ($remote === null) {
+            if (null === $remote) {
                 $io->writeln(sprintf('  tunnel %s: <comment>connector list unavailable</comment> (needs ~/.cloudflared/cert.pem and network)', $tunnelId));
                 continue;
             }

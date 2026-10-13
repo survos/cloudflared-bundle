@@ -26,7 +26,7 @@ final class IngressRule
     public static function fromArray(array $rule): self
     {
         return new self(
-            hostname: isset($rule['hostname']) && $rule['hostname'] !== '' ? (string) $rule['hostname'] : null,
+            hostname: isset($rule['hostname']) && '' !== $rule['hostname'] ? (string) $rule['hostname'] : null,
             service: (string) ($rule['service'] ?? ''),
             originRequest: \is_array($rule['originRequest'] ?? null) ? $rule['originRequest'] : [],
         );
@@ -59,15 +59,15 @@ final class IngressRule
     }
 
     public bool $isCatchAll {
-        get => $this->hostname === null;
+        get => null === $this->hostname;
     }
 
     /** @return array<string, mixed> the shape cloudflared's YAML config expects */
     public function toArray(): array
     {
-        $rule = $this->hostname === null ? [] : ['hostname' => $this->hostname];
+        $rule = null === $this->hostname ? [] : ['hostname' => $this->hostname];
         $rule['service'] = $this->service;
-        if ($this->originRequest !== []) {
+        if ([] !== $this->originRequest) {
             $rule['originRequest'] = $this->originRequest;
         }
 

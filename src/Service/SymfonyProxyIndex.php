@@ -30,7 +30,7 @@ final class SymfonyProxyIndex
      */
     public function projects(): array
     {
-        if ($this->projects !== null) {
+        if (null !== $this->projects) {
             return $this->projects;
         }
 
@@ -102,7 +102,7 @@ final class SymfonyProxyIndex
         }
         $home = $_SERVER['HOME'] ?? getenv('HOME') ?: (\function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['dir'] ?? '') : '');
 
-        return rtrim((string) $home, '/') . substr($path, 1);
+        return rtrim((string) $home, '/').substr($path, 1);
     }
 
     /**
